@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -21,6 +22,11 @@ except ImportError:
 
 # repo_id, file_q4 (primary), file_compare (smaller for the comparison frame)
 TIERS: dict[str, tuple[str, str, str]] = {
+    "Qwen2.5-0.5B-Instruct": (
+        "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+        "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+        "qwen2.5-0.5b-instruct-q2_k.gguf",
+    ),
     "TinyLlama-1.1B": (
         "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF",
         "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
@@ -45,6 +51,9 @@ TIERS: dict[str, tuple[str, str, str]] = {
 
 
 def pick_tier(rec_model: str) -> str:
+    # Check for forced small model if user requested
+    if os.environ.get("LAB_FORCE_SMALL") == "1":
+        return "Qwen2.5-0.5B-Instruct"
     for key in TIERS:
         if rec_model.startswith(key):
             return key

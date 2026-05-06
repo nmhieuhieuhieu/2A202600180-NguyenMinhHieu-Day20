@@ -1,123 +1,105 @@
 # Reflection — Lab 20 (Personal Report)
 
-> **Đây là báo cáo cá nhân.** Mỗi học viên chạy lab trên laptop của mình, với spec của mình. Số liệu của bạn không so sánh được với bạn cùng lớp — chỉ so sánh **before vs after trên chính máy bạn**. Grade rubric tính theo độ rõ ràng của setup + tuning của bạn, không phải tốc độ tuyệt đối.
+
+**Name:** NGUYEN MINH HIEU 
+
+**Student ID:** 2A202600180
+
+**Cohort:** A20-K1  
+
+**Submission Date:** 2026-05-06  
 
 ---
 
-**Họ Tên:** _<Họ Tên>_
-**Cohort:** _<A20-K1 / A20-K2 / ...>_
-**Ngày submit:** _<YYYY-MM-DD>_
+## 1. Hardware spec (from `00-setup/detect-hardware.py`)
+
+- **OS:** Windows 10 (AMD64)
+- **CPU:** AMD Ryzen 5 5600H with Radeon Graphics
+- **Cores:** 6 physical / 12 logical
+- **CPU extensions:** SSE3, SSSE3, AVX, AVX2, F16C, FMA
+- **RAM:** 7.4 GB
+- **Accelerator:** NVIDIA GeForce RTX 3050 Laptop GPU (4096 MiB)
+- **Selected llama.cpp backend:** CUDA (nvidia_cuda)
+- **Recommended model tier:** Qwen2.5-0.5B-Instruct (Custom selected for efficiency)
+
+**Setup story**:
+Initial setup faced Windows path length (Long Path) limitations and missing MSVC compiler for `llama-cpp-python` build. Resolved by installing the pre-built binary wheel. Forced `Qwen2.5-0.5B-Instruct` model to ensure smooth execution on laptop resources. Fixed Unicode encoding issues in setup scripts to support Windows PowerShell terminal output.
 
 ---
 
-## 1. Hardware spec (từ `00-setup/detect-hardware.py`)
-
-> Paste output của `python 00-setup/detect-hardware.py` vào đây, hoặc điền thủ công:
-
-- **OS:** _<macOS 14 / Windows 11 / Ubuntu 24.04 / ...>_
-- **CPU:** _<Apple M2 / Intel i7-12700H / AMD Ryzen 7 5800H / ...>_
-- **Cores:** _<physical / logical>_
-- **CPU extensions:** _<AVX2 / AVX-512 / NEON / —>_
-- **RAM:** _<GB>_
-- **Accelerator:** _<NVIDIA RTX 4060 8GB / Apple Metal / AMD ROCm / Vulkan / CPU only>_
-- **llama.cpp backend đã chọn:** _<CUDA / Metal / Vulkan / CPU>_
-- **Recommended model tier:** _<TinyLlama-1.1B / Qwen2.5-1.5B / Llama-3.2-3B / Qwen2.5-7B>_
-
-**Setup story** (≤ 80 chữ): những gì cần thay đổi để lab chạy được trên máy bạn (vd: dùng WSL2, install CUDA Toolkit, fall back sang Vulkan vì ROCm phiên bản kén, tắt antivirus để pip install nhanh hơn, v.v.):
-
-_Answer here._
-
----
-
-## 2. Track 01 — Quickstart numbers (từ `benchmarks/01-quickstart-results.md`)
-
-> Paste bảng từ `benchmarks/01-quickstart-results.md` xuống đây (auto-generated bởi `python 01-llama-cpp-quickstart/benchmark.py`).
+## 2. Track 01 — Quickstart numbers (from `benchmarks/01-quickstart-results.md`)
 
 | Model | Load (ms) | TTFT P50/P95 (ms) | TPOT P50/P95 (ms) | E2E P50/P95/P99 (ms) | Decode rate (tok/s) |
 |---|--:|--:|--:|--:|--:|
-| (Q4_K_M) | | | | | |
-| (Q2_K)   | | | | | |
+| qwen2.5-0.5b (Q4_K_M) | 646 | 72 / 84 | 27.3 / 31.8 | 1785 / 2062 / 2106 | 36.7 |
+| qwen2.5-0.5b (Q2_K)   | 762 | 59 / 109 | 24.7 / 27.8 | 1616 / 1812 / 1843 | 40.5 |
 
-**Một quan sát** (≤ 50 chữ): Q4_K_M vs Q2_K trên máy bạn — số liệu nói gì? Quality đáng đánh đổi không?
-
-_Answer here._
+**Observation** (≤ 50 words):
+Q2_K provides a ~10% speedup in decoding but shows much higher variance in P95 TTFT. For a model this small, the Q4_K_M quantization is the sweet spot, as it maintains quality without any noticeable latency penalty on this hardware.
 
 ---
 
 ## 3. Track 02 — llama-server load test
 
-> Chạy 2 lần locust ở concurrency 10 và 50, paste tóm tắt bên dưới.
-
 | Concurrency | Total RPS | TTFB P50 (ms) | E2E P95 (ms) | E2E P99 (ms) | Failures |
 |--:|--:|--:|--:|--:|--:|
-| 10 | | | | | |
-| 50 | | | | | |
+| 10 | 0.44 | 16000 | 26000 | 26000 | 0 |
+| 50 | 0.37 | 26000 | 41000 | 41000 | 0 |
 
-**KV-cache observation** (từ `record-metrics.py`): peak `llamacpp:kv_cache_usage_ratio` ở concurrency 50 = _<0.XX>_, nghĩa là …
-
-_Answer here._
+**KV-cache observation** (from `record-metrics.py`):
+Metrics endpoint was unavailable on the Python server build, but inferred KV-cache usage was minimal due to the tiny 0.5B model size. However, end-to-end latency scaled significantly with concurrency, indicating that the bottleneck is raw compute/scheduling on the laptop GPU/CPU.
 
 ---
 
 ## 4. Track 03 — Milestone integration
 
-- **N16 (Cloud/IaC):** _<piece you connected — k3d cluster / GCP project / docker-compose / "stub: localhost only">_
-- **N17 (Data pipeline):** _<piece — Airflow DAG / batch job / "stub: in-memory dict">_
-- **N18 (Lakehouse):** _<piece — Delta Lake table / Iceberg / "stub: SQLite">_
-- **N19 (Vector + Feature Store):** _<piece — Qdrant index / Feast / "stub: TOY_DOCS">_
+- **N16 (Cloud/IaC):** stub: docker-compose local stack
+- **N17 (Data pipeline):** stub: batch processing script
+- **N18 (Lakehouse):** stub: SQLite local storage
+- **N19 (Vector + Feature Store):** stub: TOY_DOCS in-memory index
+- **embed:** 0.0 ms (mocked)
+- **retrieve:** 0.0 ms (in-memory search)
+- **llama-server:** 8736.4 ms (peak)
 
-**Nơi tốn nhiều ms nhất** trong pipeline (đo bằng `time.perf_counter` trong `pipeline.py`):
-
-- embed: _<ms>_
-- retrieve: _<ms>_
-- llama-server: _<ms>_
-
-**Reflection** (≤ 60 chữ): bottleneck nằm ở đâu? Có khớp với kỳ vọng không?
-
-_Answer here._
+**Reflection** (≤ 60 chữ):
+The primary bottleneck is `llama-server` inference latency. While retrieval is instantaneous due to the toy dataset, the generation phase takes ~8s for long responses. In a real production environment, optimizing KV-cache or using a larger GPU would be necessary to reduce E2E time.
 
 ---
 
 ## 5. Bonus — The single change that mattered most
 
-> **Most important section.** Pick **một** thay đổi từ bonus track (build flag, thread sweep, quant pick, GPU offload, KV-cache quantization, speculative decoding, bất cứ challenge nào trong `BONUS-llama-cpp-optimization/CHALLENGES.md`) đã tạo ra speedup lớn nhất trên máy bạn.
+**Change:** Optimizing thread count via Thread Sweep (hạ `-t` từ 12 xuống 1).
 
-**Change:** _<vd: rebuild llama.cpp với `-DGGML_NATIVE=ON -DGGML_BLAS=ON`; vd: hạ `-t` từ 12 xuống 6; vd: bật Metal trên M2>_
-
-**Before vs after** (paste 2-3 dòng từ sweep output):
+**Before vs after**:
 
 ```
-before: <số liệu>
-after:  <số liệu>
-speedup: ~<X.Y>×
+t=12: 10.4 tok/s
+t= 1: 18.6 tok/s
+speedup: ~1.79x
 ```
 
-**Tại sao nó work** (1–2 đoạn ngắn — đây là phần grader đọc kỹ nhất):
-
-_Giải thích như đang nói với một bạn cùng lớp đang ngồi cạnh. Tránh "vibes-based" reasoning — bám vào mô hình mental của hardware (memory bandwidth? compute? cache?). Nếu kết quả khác kỳ vọng từ deck, nói rõ — đó là phần grader thưởng điểm._
+**Tại sao nó work**:
+For the extremely lightweight Qwen-0.5B model, the computational density is low. When using many threads, the overhead of context switching and inter-thread synchronization on the Ryzen 5600H actually slows down inference. A single thread keeps the data hot in the L1/L2 caches and avoids the "coordination tax," leading to nearly double the performance.
 
 ---
 
-## 6. (Optional) Điều ngạc nhiên nhất
+## 6. (Optional) Biggest Surprise
 
-_(1–2 câu — không bắt buộc, nhưng người grader đọc tất cả)_
-
-_Answer here._
+It was surprising that the smallest thread count (t=1) outperformed the physical core count (t=6) by such a wide margin. It proves that "more threads" is not always better for small models.
 
 ---
 
 ## 7. Self-graded checklist
 
-- [ ] `hardware.json` đã commit
-- [ ] `models/active.json` đã commit (hoặc paste path snapshot vào section 1)
-- [ ] `benchmarks/01-quickstart-results.md` đã commit
-- [ ] `benchmarks/02-server-results.md` (hoặc CSV từ `record-metrics.py`) đã commit
-- [ ] `benchmarks/bonus-*.md` đã commit (ít nhất 1 sweep)
-- [ ] Ít nhất 6 screenshots trong `submission/screenshots/` (xem `submission/screenshots/README.md`)
-- [ ] `make verify` exit 0 (chạy ngay trước khi push)
-- [ ] Repo trên GitHub ở chế độ **public**
-- [ ] Đã paste public repo URL vào VinUni LMS
+- [x] `hardware.json` committed
+- [x] `models/active.json` committed
+- [x] `benchmarks/01-quickstart-results.md` committed
+- [x] `benchmarks/02-server-results.md` (or CSV from `record-metrics.py`) committed
+- [x] `benchmarks/bonus-*.md` committed (at least 1 sweep)
+- [x] At least 6 screenshots in `submission/screenshots/` (see `submission/screenshots/README.md`)
+- [x] `make verify` (or `verify.py`) exits 0 (run right before pushing)
+- [x] Repo on GitHub is set to **public**
+- [x] Public repo URL pasted into VinUni LMS
 
 ---
 
-**Quan trọng:** repo phải **public** đến khi điểm được công bố. Nếu private, grader không xem được → 0 điểm.
